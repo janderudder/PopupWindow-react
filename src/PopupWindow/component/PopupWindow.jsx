@@ -23,8 +23,10 @@ export default class PopupWindow extends React.Component
     }
 
     open = () => {
-        const { isOpen } = this.state
-        if (isOpen) {
+        const renderChildren = (rootNode) => {
+            ReactDOM.render(<>{this.props.children}</>, rootNode)
+        }
+        if (this.state.isOpen) {
             this.state.popup.focus()
         } else {
             const { src, target, nodeSelector, featString } = this.state
@@ -32,11 +34,18 @@ export default class PopupWindow extends React.Component
                 isOpen: true,
                 popup: window.open(src, target, featString)
             }, () => {
-                this.state.popup.addEventListener('DOMContentLoaded', () => {
-                    ReactDOM.render(
-                        <>{this.props.children}</>,
-                        this.state.popup.document.querySelector(nodeSelector))
-                })
+                const popup = this.state.popup
+                /*  This is programmed defensively. In practice, the render
+                    function seems to always end up being called by the event
+                    listener, even if we add a delay before querying the node.*/
+                const renderNode = popup.document.querySelector(nodeSelector)
+                if (renderNode) {
+                    renderChildren(renderNode)
+                } else {
+                    popup.addEventListener('DOMContentLoaded', (event) => {
+                        renderChildren(event.target.querySelector(nodeSelector))
+                    })
+                }
             })
         }
     }
